@@ -1,19 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealHealthBadge } from "@/components/deals/deal-health-badge";
 import { useDeals } from "@/hooks/use-api";
 import { useWeek } from "@/contexts/week-context";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateShort } from "@/lib/format";
 import { STAGE_CONFIG } from "@/lib/constants";
 import type { StageCategory, HealthStatus } from "@/lib/constants";
 import type { Deal } from "@/types";
 import { cn } from "@/lib/utils";
 
-const PIPELINE_STAGES: StageCategory[] = ["MQL", "SAL", "SQL"];
+const PIPELINE_STAGES: StageCategory[] = ["MQL", "SAL", "SQL", "WON"];
 
 interface StageColumnProps {
   stage: StageCategory;
@@ -30,7 +31,8 @@ function StageColumnSkeleton({ stage }: { stage: StageCategory }) {
           "mb-3 flex items-center justify-between rounded-lg px-3 py-2",
           stage === "MQL" && "bg-violet-100 dark:bg-violet-950",
           stage === "SAL" && "bg-blue-100 dark:bg-blue-950",
-          stage === "SQL" && "bg-cyan-100 dark:bg-cyan-950"
+          stage === "SQL" && "bg-cyan-100 dark:bg-cyan-950",
+          stage === "WON" && "bg-emerald-100 dark:bg-emerald-950"
         )}
       >
         <div className="flex items-center gap-2">
@@ -65,6 +67,8 @@ function StageColumn({ stage, deals, isLoading }: StageColumnProps) {
     return <StageColumnSkeleton stage={stage} />;
   }
 
+  const isWonStage = stage === "WON";
+
   return (
     <div className="flex flex-1 flex-col">
       <div
@@ -72,7 +76,8 @@ function StageColumn({ stage, deals, isLoading }: StageColumnProps) {
           "mb-3 flex items-center justify-between rounded-lg px-3 py-2",
           stage === "MQL" && "bg-violet-100 dark:bg-violet-950",
           stage === "SAL" && "bg-blue-100 dark:bg-blue-950",
-          stage === "SQL" && "bg-cyan-100 dark:bg-cyan-950"
+          stage === "SQL" && "bg-cyan-100 dark:bg-cyan-950",
+          stage === "WON" && "bg-emerald-100 dark:bg-emerald-950"
         )}
       >
         <div className="flex items-center gap-2">
@@ -87,7 +92,13 @@ function StageColumn({ stage, deals, isLoading }: StageColumnProps) {
       </div>
       <div className="flex flex-col gap-2 overflow-y-auto">
         {deals.map((deal) => (
-          <Card key={deal.id} className="cursor-pointer transition-shadow hover:shadow-md">
+          <Card
+            key={deal.id}
+            className={cn(
+              "cursor-pointer transition-shadow hover:shadow-md",
+              isWonStage && "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30"
+            )}
+          >
             <CardContent className="p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -96,7 +107,11 @@ function StageColumn({ stage, deals, isLoading }: StageColumnProps) {
                     {deal.customerName}
                   </p>
                 </div>
-                <DealHealthBadge status={deal.health as HealthStatus} showLabel={false} />
+                {isWonStage ? (
+                  <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-500" />
+                ) : (
+                  <DealHealthBadge status={deal.health as HealthStatus} showLabel={false} />
+                )}
               </div>
               <div className="mt-2 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{deal.ownerName || "Unassigned"}</span>
@@ -105,7 +120,11 @@ function StageColumn({ stage, deals, isLoading }: StageColumnProps) {
                 </span>
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                {deal.daysInStage}d in stage
+                {isWonStage ? (
+                  deal.closeDate ? `Closed ${formatDateShort(deal.closeDate)}` : "Closed"
+                ) : (
+                  `${deal.daysInStage}d in stage`
+                )}
               </div>
             </CardContent>
           </Card>
@@ -171,12 +190,19 @@ export default function PipelinePage() {
         </div>
         <div className="flex flex-1 gap-4 overflow-hidden">
           {PIPELINE_STAGES.map((stage) => (
-            <StageColumn
-              key={stage}
-              stage={stage}
-              deals={dealsByStage.get(stage) || []}
-              isLoading={isLoading}
-            />
+            <div key={stage} className="contents">
+              {stage === "WON" && (
+                <div className="flex flex-col items-center gap-2 px-1">
+                  <div className="h-8" />
+                  <div className="flex-1 w-px bg-border" />
+                </div>
+              )}
+              <StageColumn
+                stage={stage}
+                deals={dealsByStage.get(stage) || []}
+                isLoading={isLoading}
+              />
+            </div>
           ))}
         </div>
       </div>

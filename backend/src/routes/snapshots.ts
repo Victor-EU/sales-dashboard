@@ -4,7 +4,7 @@ import { logger } from "../logger.js";
 import { schedulerService } from "../services/scheduler.js";
 import { hubspotService } from "../services/hubspot.js";
 import { parseWeekId, getCurrentWeek } from "../services/week.js";
-import { ALL_STAGES, FUNNEL_STAGES } from "../services/constants.js";
+import { ALL_STAGES, FUNNEL_STAGES, SALES_PIPELINES } from "../services/constants.js";
 import type {
   DashboardMetrics,
   StageMetrics,
@@ -99,29 +99,23 @@ router.get("/:weekId", async (req: Request, res: Response) => {
       return;
     }
 
-    // Get stage snapshots
+    logger.info(`Fetching snapshot metrics for ${weekId}, pipelines: ${SALES_PIPELINES.join(", ")}`);
+
+    // Query directly from deal_weekly_snapshots filtered by SALES_PIPELINES
+    // This ensures we only count New Business + Partnership Deals
     const stageResult = await query<{
       stage_category: string;
       total_value: string;
-      logo_count: number;
-      arpa: string;
-      prev_week_value: string | null;
-      prev_week_logos: number | null;
-      prev_week_arpa: string | null;
-      value_change: string | null;
-      logo_change: number | null;
-      arpa_change: string | null;
-      value_change_pct: string | null;
-      deals_entered: number;
-      deals_exited: number;
+      logo_count: string;
     }>(
-      `SELECT stage_category, total_value, logo_count, arpa,
-              prev_week_value, prev_week_logos, prev_week_arpa,
-              value_change, logo_change, arpa_change, value_change_pct,
-              deals_entered, deals_exited
-       FROM weekly_stage_snapshots
-       WHERE week_id = $1`,
-      [weekId]
+      `SELECT stage_category,
+              SUM(arr_usd) as total_value,
+              COUNT(*) as logo_count
+       FROM deal_weekly_snapshots
+       WHERE week_id = $1
+         AND pipeline_name = ANY($2)
+       GROUP BY stage_category`,
+      [weekId, SALES_PIPELINES]
     );
 
     if (stageResult.rows.length === 0) {
@@ -129,36 +123,80 @@ router.get("/:weekId", async (req: Request, res: Response) => {
       return;
     }
 
-    // Build stage metrics
-    const stageMap = new Map<StageCategory, typeof stageResult.rows[0]>();
-    for (const row of stageResult.rows) {
-      stageMap.set(row.stage_category as StageCategory, row);
+    // Get previous week data for comparison
+    const prevWeekResult = await query<{
+      stage_category: string;
+      total_value: string;
+      logo_count: string;
+    }>(
+      `SELECT stage_category,
+              SUM(arr_usd) as total_value,
+              COUNT(*) as logo_count
+       FROM deal_weekly_snapshots
+       WHERE week_id = (
+         SELECT MAX(week_id) FROM deal_weekly_snapshots
+         WHERE week_id < $1
+       )
+         AND pipeline_name = ANY($2)
+       GROUP BY stage_category`,
+      [weekId, SALES_PIPELINES]
+    );
+
+    // Build stage metrics map
+    const stageMap = new Map<StageCategory, { value: number; logos: number }>();
+    const prevStageMap = new Map<StageCategory, { value: number; logos: number }>();
+
+    // Initialize all stages with zeros
+    for (const stage of ALL_STAGES) {
+      stageMap.set(stage, { value: 0, logos: 0 });
+      prevStageMap.set(stage, { value: 0, logos: 0 });
     }
 
+    // Fill in current week data
+    for (const row of stageResult.rows) {
+      const category = row.stage_category as StageCategory;
+      stageMap.set(category, {
+        value: parseFloat(row.total_value) || 0,
+        logos: parseInt(row.logo_count) || 0,
+      });
+    }
+
+    // Fill in previous week data
+    for (const row of prevWeekResult.rows) {
+      const category = row.stage_category as StageCategory;
+      prevStageMap.set(category, {
+        value: parseFloat(row.total_value) || 0,
+        logos: parseInt(row.logo_count) || 0,
+      });
+    }
+
+    // Build stage metrics array
     const stages: StageMetrics[] = ALL_STAGES.map((category) => {
-      const row = stageMap.get(category);
+      const current = stageMap.get(category)!;
+      const prev = prevStageMap.get(category)!;
+      const valueChange = current.value - prev.value;
+      const logosChange = current.logos - prev.logos;
+      const arpa = current.logos > 0 ? current.value / current.logos : 0;
+      const prevArpa = prev.logos > 0 ? prev.value / prev.logos : 0;
+
       return {
         stage: category,
-        value: row ? parseFloat(row.total_value) : 0,
-        logos: row?.logo_count || 0,
-        arpa: row ? parseFloat(row.arpa) : 0,
-        prevValue: row?.prev_week_value
-          ? parseFloat(row.prev_week_value)
-          : null,
-        prevLogos: row?.prev_week_logos ?? null,
-        prevArpa: row?.prev_week_arpa ? parseFloat(row.prev_week_arpa) : null,
-        valueChange: row?.value_change ? parseFloat(row.value_change) : null,
-        logosChange: row?.logo_change ?? null,
-        arpaChange: row?.arpa_change ? parseFloat(row.arpa_change) : null,
-        valueChangePct: row?.value_change_pct
-          ? parseFloat(row.value_change_pct)
-          : null,
-        dealsEntered: row?.deals_entered || 0,
-        dealsExited: row?.deals_exited || 0,
+        value: current.value,
+        logos: current.logos,
+        arpa,
+        prevValue: prev.value || null,
+        prevLogos: prev.logos || null,
+        prevArpa: prevArpa || null,
+        valueChange: valueChange || null,
+        logosChange: logosChange || null,
+        arpaChange: arpa - prevArpa || null,
+        valueChangePct: prev.value > 0 ? (valueChange / prev.value) * 100 : null,
+        dealsEntered: 0, // Would need movement data to calculate
+        dealsExited: 0,
       };
     });
 
-    // Calculate totals (MQL + SAL + SQL only)
+    // Calculate totals (MQL + SAL + SQL only - open pipeline)
     const funnelStages = stages.filter((s) =>
       FUNNEL_STAGES.includes(s.stage)
     );
@@ -177,17 +215,14 @@ router.get("/:weekId", async (req: Request, res: Response) => {
     const prevArpa = prevTotalLogos > 0 ? prevTotalValue / prevTotalLogos : 0;
 
     // Calculate win rate
-    const wonStage = stageMap.get("WON");
-    const wonValue = wonStage ? parseFloat(wonStage.total_value) : 0;
-    const winRate = totalValue > 0 ? (wonValue / (totalValue + wonValue)) * 100 : 0;
-
-    const prevWonValue = wonStage?.prev_week_value
-      ? parseFloat(wonStage.prev_week_value)
+    const wonData = stageMap.get("WON")!;
+    const prevWonData = prevStageMap.get("WON")!;
+    const winRate = totalValue + wonData.value > 0
+      ? (wonData.value / (totalValue + wonData.value)) * 100
       : 0;
-    const prevWinRate =
-      prevTotalValue > 0
-        ? (prevWonValue / (prevTotalValue + prevWonValue)) * 100
-        : 0;
+    const prevWinRate = prevTotalValue + prevWonData.value > 0
+      ? (prevWonData.value / (prevTotalValue + prevWonData.value)) * 100
+      : 0;
 
     const metrics: DashboardMetrics = {
       weekId,

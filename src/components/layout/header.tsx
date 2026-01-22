@@ -5,7 +5,6 @@ import { Command, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 import { WeekSelector } from "@/components/dashboard/week-selector";
-import { PeriodSelector } from "@/components/dashboard/period-selector";
 
 const pageTitles: Record<string, string> = {
   "/": "Executive Summary",
@@ -30,8 +29,6 @@ export function Header({ onOpenCommand }: HeaderProps) {
       <h1 className="text-xl font-semibold">{title}</h1>
 
       <div className="flex items-center gap-3">
-        <PeriodSelector />
-        <div className="h-6 w-px bg-border" />
         <WeekSelector />
 
         <Button

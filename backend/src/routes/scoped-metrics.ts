@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { query } from "../db/index.js";
 import { logger } from "../logger.js";
-import { FUNNEL_STAGES, ALL_STAGES } from "../services/constants.js";
+import { FUNNEL_STAGES, ALL_STAGES, SALES_PIPELINES } from "../services/constants.js";
 import type { StageCategory, StageMetrics } from "../types/index.js";
 
 const router = Router();
@@ -47,18 +47,19 @@ function parsePeriod(period: string): { startDate: Date; endDate: Date } | null 
  *
  * Query parameters:
  * - period: Year (2025), Quarter (2025-Q1), or date range (2025-01-01:2025-06-30)
- * - pipeline: Optional pipeline filter (default: "New Business")
  *
  * Scoping rules:
- * - Pipeline (MQL, SAL, SQL): Filter by deal created_date
- * - ARR: Filter by contract_start_date
- * - Win Rate: Filter by close_date for WON deals
+ * - Pipeline (MQL, SAL, SQL): NO date filter - shows ALL open deals at snapshot time
+ *   (Pipeline is a point-in-time snapshot, regardless of when deals were created)
+ *   Includes: New Business + Partnership Deals pipelines
+ * - WON/LOST: Filter by close_date (deals that closed in the period)
+ * - ARR: Filter by contract_start_date (revenue starting in the period)
+ * - Win Rate: Based on deals closed in the period
  */
 router.get("/:weekId", async (req: Request, res: Response) => {
   try {
     const weekId = req.params.weekId as string;
     const period = req.query.period as string;
-    const pipeline = (req.query.pipeline as string) || "New Business"; // Default to New Business
 
     if (!period) {
       res.status(400).json({ error: "period parameter is required" });
@@ -73,9 +74,11 @@ router.get("/:weekId", async (req: Request, res: Response) => {
       return;
     }
 
-    logger.info(`Fetching scoped metrics for ${weekId}, period: ${period}, pipeline: ${pipeline}`);
+    logger.info(`Fetching scoped metrics for ${weekId}, period: ${period}, pipelines: ${SALES_PIPELINES.join(", ")}`);
 
-    // Get pipeline metrics (scoped by created_date, filtered by pipeline)
+    // Get pipeline metrics - NO date filter
+    // Pipeline = ALL open deals (MQL, SAL, SQL) at snapshot time
+    // Includes: New Business + Partnership Deals
     const pipelineResult = await query<{
       stage_category: string;
       total_value: string;
@@ -86,15 +89,13 @@ router.get("/:weekId", async (req: Request, res: Response) => {
               COUNT(*) as logo_count
        FROM deal_weekly_snapshots
        WHERE week_id = $1
-         AND pipeline_name = $4
+         AND pipeline_name = ANY($2)
          AND stage_category IN ('MQL', 'SAL', 'SQL')
-         AND created_date >= $2
-         AND created_date <= $3
        GROUP BY stage_category`,
-      [weekId, dateRange.startDate, dateRange.endDate, pipeline]
+      [weekId, SALES_PIPELINES]
     );
 
-    // Get WON metrics (scoped by close_date, filtered by pipeline)
+    // Get WON metrics (scoped by close_date, filtered by sales pipelines)
     const wonResult = await query<{
       total_value: string;
       logo_count: string;
@@ -103,14 +104,14 @@ router.get("/:weekId", async (req: Request, res: Response) => {
               COUNT(*) as logo_count
        FROM deal_weekly_snapshots
        WHERE week_id = $1
-         AND pipeline_name = $4
+         AND pipeline_name = ANY($4)
          AND stage_category = 'WON'
          AND close_date >= $2
          AND close_date <= $3`,
-      [weekId, dateRange.startDate, dateRange.endDate, pipeline]
+      [weekId, dateRange.startDate, dateRange.endDate, SALES_PIPELINES]
     );
 
-    // Get LOST metrics (scoped by close_date, filtered by pipeline)
+    // Get LOST metrics (scoped by close_date, filtered by sales pipelines)
     const lostResult = await query<{
       total_value: string;
       logo_count: string;
@@ -119,14 +120,14 @@ router.get("/:weekId", async (req: Request, res: Response) => {
               COUNT(*) as logo_count
        FROM deal_weekly_snapshots
        WHERE week_id = $1
-         AND pipeline_name = $4
+         AND pipeline_name = ANY($4)
          AND stage_category = 'LOST'
          AND close_date >= $2
          AND close_date <= $3`,
-      [weekId, dateRange.startDate, dateRange.endDate, pipeline]
+      [weekId, dateRange.startDate, dateRange.endDate, SALES_PIPELINES]
     );
 
-    // Get ARR metrics (scoped by contract_start_date, filtered by pipeline)
+    // Get ARR metrics (scoped by contract_start_date, filtered by sales pipelines)
     const arrResult = await query<{
       total_arr: string;
       logo_count: string;
@@ -135,11 +136,11 @@ router.get("/:weekId", async (req: Request, res: Response) => {
               COUNT(*) as logo_count
        FROM deal_weekly_snapshots
        WHERE week_id = $1
-         AND pipeline_name = $4
+         AND pipeline_name = ANY($4)
          AND stage_category = 'WON'
          AND contract_start_date >= $2
          AND contract_start_date <= $3`,
-      [weekId, dateRange.startDate, dateRange.endDate, pipeline]
+      [weekId, dateRange.startDate, dateRange.endDate, SALES_PIPELINES]
     );
 
     // Build stage metrics
@@ -218,10 +219,11 @@ router.get("/:weekId", async (req: Request, res: Response) => {
     res.json({
       weekId,
       period,
-      pipelineName: pipeline,
+      pipelineName: "Sales Pipeline",
+      pipelineIncludes: SALES_PIPELINES,
       periodStart: dateRange.startDate.toISOString().split("T")[0],
       periodEnd: dateRange.endDate.toISOString().split("T")[0],
-      // Pipeline metrics (scoped by created_date)
+      // Pipeline metrics (NO date filter - all open deals at snapshot time)
       pipeline: {
         totalValue,
         totalLogos,
@@ -255,8 +257,14 @@ router.get("/:weekId", async (req: Request, res: Response) => {
  *
  * Query parameters:
  * - period: Year, Quarter, or date range
- * - scope: "pipeline" (created_date), "arr" (contract_start_date), "winrate" (close_date)
+ * - scope: "pipeline" (NO date filter), "arr" (contract_start_date), "winrate" (close_date)
  * - stage: Optional stage filter (MQL, SAL, SQL, WON, LOST)
+ *
+ * Scoping rules:
+ * - pipeline: ALL open deals (MQL, SAL, SQL) at snapshot time - NO date filter
+ *   Includes: New Business + Partnership Deals pipelines
+ * - arr: Filter by contract_start_date
+ * - winrate: Filter by close_date
  */
 router.get("/:weekId/deals", async (req: Request, res: Response) => {
   try {
@@ -278,36 +286,48 @@ router.get("/:weekId/deals", async (req: Request, res: Response) => {
       return;
     }
 
-    // Determine which date field to filter by
-    let dateField: string;
-    switch (scope) {
-      case "arr":
-        dateField = "contract_start_date";
-        break;
-      case "winrate":
-        dateField = "close_date";
-        break;
-      case "pipeline":
-      default:
-        dateField = "created_date";
-        break;
-    }
+    // Build query based on scope
+    let sql: string;
+    let params: (string | Date | string[])[];
 
-    // Build query
-    let sql = `
-      SELECT deal_id, deal_name, end_customer_name, arr_usd, stage_category,
-             pipeline_name, owner_name, created_date, close_date, contract_start_date
-      FROM deal_weekly_snapshots
-      WHERE week_id = $1
-        AND ${dateField} >= $2
-        AND ${dateField} <= $3
-    `;
-    const params: (string | Date)[] = [weekId, dateRange.startDate, dateRange.endDate];
+    if (scope === "pipeline") {
+      // Pipeline scope: NO date filter - show ALL open deals at snapshot time
+      // Includes: New Business + Partnership Deals pipelines
+      sql = `
+        SELECT deal_id, deal_name, end_customer_name, arr_usd, stage_category,
+               pipeline_name, owner_name, created_date, close_date, contract_start_date
+        FROM deal_weekly_snapshots
+        WHERE week_id = $1
+          AND pipeline_name = ANY($2)
+          AND stage_category IN ('MQL', 'SAL', 'SQL')
+      `;
+      params = [weekId, SALES_PIPELINES];
 
-    // Add stage filter if specified
-    if (stage) {
-      sql += ` AND stage_category = $4`;
-      params.push(stage.toUpperCase());
+      // Add stage filter if specified (within MQL, SAL, SQL)
+      if (stage) {
+        sql += ` AND stage_category = $3`;
+        params.push(stage.toUpperCase());
+      }
+    } else {
+      // ARR and Winrate scopes: filter by date and sales pipelines
+      const dateField = scope === "arr" ? "contract_start_date" : "close_date";
+
+      sql = `
+        SELECT deal_id, deal_name, end_customer_name, arr_usd, stage_category,
+               pipeline_name, owner_name, created_date, close_date, contract_start_date
+        FROM deal_weekly_snapshots
+        WHERE week_id = $1
+          AND pipeline_name = ANY($4)
+          AND ${dateField} >= $2
+          AND ${dateField} <= $3
+      `;
+      params = [weekId, dateRange.startDate, dateRange.endDate, SALES_PIPELINES];
+
+      // Add stage filter if specified
+      if (stage) {
+        sql += ` AND stage_category = $5`;
+        params.push(stage.toUpperCase());
+      }
     }
 
     sql += ` ORDER BY arr_usd DESC LIMIT 100`;

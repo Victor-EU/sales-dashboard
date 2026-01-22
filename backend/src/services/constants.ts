@@ -207,3 +207,11 @@ export const ACTIVE_PIPELINES = [
   "27850444",     // Renewal
   "38293447",     // Expansion
 ];
+
+/**
+ * Sales pipelines for scoped metrics (New Business + Partnership Deals)
+ * These are the pipelines that represent "new sales" pipeline value
+ * - New Business: Direct sales pipeline
+ * - Partnership Deals: Deals coming through partner channel
+ */
+export const SALES_PIPELINES = ["New Business", "Partnership Deals"];

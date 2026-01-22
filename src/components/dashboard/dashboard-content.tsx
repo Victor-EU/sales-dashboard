@@ -6,22 +6,18 @@ import { FunnelChart } from "@/components/charts/funnel-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { WeeklyComparisonTable } from "./weekly-comparison-table";
 import { MovementsList } from "./movements-list";
-import { useMetrics, useTrends, useMovements, useScopedMetrics } from "@/hooks/use-api";
+import { useMetrics, useTrends, useMovements } from "@/hooks/use-api";
 import { useWeek } from "@/contexts/week-context";
 import { getMockDashboardMetrics, getMockTrendData, getMockMovements } from "@/lib/mock-data";
 import type { StageMetrics, TrendPoint, DealMovement } from "@/types";
 import type { StageCategory } from "@/lib/constants";
 
 export function DashboardContent() {
-  // Get selected week and period from context
-  const { selectedWeekId: weekId, selectedPeriod, isScopedMode } = useWeek();
+  // Get selected week from context - pipeline data comes from the snapshot
+  const { selectedWeekId: weekId } = useWeek();
 
-  // Use regular metrics for "all" or scoped metrics when a period is selected
+  // Use snapshot metrics - pipeline = all open deals at snapshot time
   const { data: apiMetrics, isLoading: metricsLoading, error: metricsError } = useMetrics(weekId);
-  const { data: scopedMetrics, isLoading: scopedLoading, error: scopedError } = useScopedMetrics(
-    isScopedMode ? weekId : undefined,
-    isScopedMode ? selectedPeriod : undefined
-  );
   const { data: apiTrends, isLoading: trendsLoading, error: trendsError } = useTrends(12);
   const { data: apiMovements, isLoading: movementsLoading, error: movementsError } = useMovements(weekId);
 
@@ -31,42 +27,15 @@ export function DashboardContent() {
   const mockMovements = getMockMovements();
 
   // Transform API data to match component types
-  // When in scoped mode, use scoped metrics; otherwise use regular metrics
-  const metrics = (() => {
-    if (isScopedMode && scopedMetrics) {
-      // Transform scoped metrics format to match the dashboard format
-      return {
-        totalValue: scopedMetrics.pipeline.totalValue,
-        totalLogos: scopedMetrics.pipeline.totalLogos,
-        arpa: scopedMetrics.pipeline.arpa,
-        winRate: scopedMetrics.winRate.rate,
-        // For scoped mode, we don't have previous week comparisons
-        prevTotalValue: undefined,
-        prevTotalLogos: undefined,
-        prevArpa: undefined,
-        prevWinRate: undefined,
-        stages: scopedMetrics.pipeline.stages.map((s) => ({
-          ...s,
-          stage: s.stage as StageCategory,
-          // Scoped mode doesn't have week-over-week changes
-          prevValue: undefined,
-          prevLogos: undefined,
-          valueChange: undefined,
-          logoChange: undefined,
-        })) as StageMetrics[],
-      };
-    }
-    if (apiMetrics) {
-      return {
+  const metrics = apiMetrics
+    ? {
         ...apiMetrics,
         stages: apiMetrics.stages.map((s) => ({
           ...s,
           stage: s.stage as StageCategory,
         })) as StageMetrics[],
-      };
-    }
-    return mockMetrics;
-  })();
+      }
+    : mockMetrics;
 
   const trendData: TrendPoint[] = apiTrends || mockTrendData;
 
@@ -91,23 +60,12 @@ export function DashboardContent() {
     : mockMovements;
 
   const sparklineData = trendData.map((d) => d.value);
-  const isLoading = metricsLoading || trendsLoading || movementsLoading || scopedLoading;
-  const hasApiError = metricsError || trendsError || movementsError || (isScopedMode && scopedError);
+  const isLoading = metricsLoading || trendsLoading || movementsLoading;
+  const hasApiError = metricsError || trendsError || movementsError;
 
   return (
     <div className="space-y-6">
-      {/* Scoped Mode Indicator */}
-      {isScopedMode && scopedMetrics && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200">
-          <strong>{scopedMetrics.pipelineName} - {selectedPeriod}:</strong>{" "}
-          Pipeline: {scopedMetrics.pipeline.totalLogos} deals (${(scopedMetrics.pipeline.totalValue / 1000000).toFixed(2)}M) |{" "}
-          Won: {scopedMetrics.winRate.wonLogos} deals (${(scopedMetrics.winRate.wonValue / 1000).toFixed(0)}K) |{" "}
-          Lost: {scopedMetrics.winRate.lostLogos} |{" "}
-          Win Rate: {scopedMetrics.winRate.rate.toFixed(1)}%
-        </div>
-      )}
-
-      {/* Key Metrics */}
+      {/* API Error Indicator */}
       {hasApiError && (
         <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-200">
           Using demo data. Connect to backend for live HubSpot data.
@@ -116,12 +74,12 @@ export function DashboardContent() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Total Pipeline"
+          label="Open Pipeline"
           value={metrics.totalValue}
           previousValue={metrics.prevTotalValue}
           format="currency"
           sparklineData={sparklineData}
-          tooltip="Sum of ARR for all deals in MQL, SAL, and SQL stages"
+          tooltip="Sum of ARR for all open deals (MQL, SAL, SQL) at snapshot time"
           loading={isLoading && !hasApiError}
         />
         <MetricCard
