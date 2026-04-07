@@ -246,19 +246,17 @@ router.get("/:weekId", async (req: Request, res: Response) => {
   }
 });
 
-/** POST /api/snapshots/trigger - Trigger a manual snapshot */
-router.post("/trigger", async (_req: Request, res: Response) => {
-  try {
-    const snapshotRunId = await schedulerService.triggerManualSnapshot();
-    res.json({
-      success: true,
-      message: "Snapshot triggered successfully",
-      snapshotRunId,
-    });
-  } catch (error) {
-    logger.error("Failed to trigger snapshot", { error });
-    res.status(500).json({ error: "Failed to trigger snapshot" });
-  }
+/** POST /api/snapshots/trigger - Trigger a manual snapshot (async) */
+router.post("/trigger", (_req: Request, res: Response) => {
+  // Return immediately, run snapshot in background
+  res.json({
+    success: true,
+    message: "Snapshot triggered — check /api/snapshots for progress",
+  });
+
+  schedulerService.triggerManualSnapshot().catch((error) => {
+    logger.error("Background snapshot failed", { error });
+  });
 });
 
 /** POST /api/snapshots/refresh-cache - Refresh HubSpot caches (owners, pipelines) */
