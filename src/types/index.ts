@@ -62,6 +62,17 @@ export interface TrendPoint {
   arpa: number;
 }
 
+/** Trend data point with stage breakdown */
+export interface StageTrendPoint {
+  weekId: string;
+  week: string;
+  SAL: number;
+  SQL: number;
+  QUOTE_SENT: number;
+  NEGOTIATION: number;
+  total: number;
+}
+
 /** Deal movement record */
 export interface DealMovement {
   id: string;

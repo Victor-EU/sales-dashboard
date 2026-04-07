@@ -1,5 +1,5 @@
 /** Stage categories for the sales funnel */
-export type StageCategory = "MQL" | "SAL" | "SQL" | "WON" | "LOST";
+export type StageCategory = "MQL" | "SAL" | "SQL" | "QUOTE_SENT" | "NEGOTIATION" | "WON" | "LOST";
 
 /** Health status for deals */
 export type HealthStatus = "HEALTHY" | "ATTENTION" | "CRITICAL";

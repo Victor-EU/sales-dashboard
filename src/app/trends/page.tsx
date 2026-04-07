@@ -5,13 +5,13 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendChart } from "@/components/charts/trend-chart";
-import { useTrends, useMetrics } from "@/hooks/use-api";
+import { useTrends, useTrendsByStage, useMetrics } from "@/hooks/use-api";
 import { useWeek } from "@/contexts/week-context";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { TrendIndicator } from "@/components/dashboard/trend-indicator";
 import { STAGE_CONFIG, FUNNEL_STAGES } from "@/lib/constants";
 import type { StageCategory } from "@/lib/constants";
-import type { TrendPoint, StageMetrics } from "@/types";
+import type { TrendPoint, StageTrendPoint, StageMetrics } from "@/types";
 import { cn } from "@/lib/utils";
 
 function TrendsSkeleton() {
@@ -55,10 +55,11 @@ function TrendsSkeleton() {
 export default function TrendsPage() {
   const { selectedWeekId } = useWeek();
   const { data: apiTrends, isLoading: trendsLoading, error: trendsError } = useTrends(12);
+  const { data: apiStageTrends, isLoading: stageTrendsLoading, error: stageTrendsError } = useTrendsByStage(12);
   const { data: apiMetrics, isLoading: metricsLoading, error: metricsError } = useMetrics(selectedWeekId);
 
-  const isLoading = trendsLoading || metricsLoading;
-  const error = trendsError || metricsError;
+  const isLoading = trendsLoading || stageTrendsLoading || metricsLoading;
+  const error = trendsError || stageTrendsError || metricsError;
 
   const trendData: TrendPoint[] = useMemo(() => {
     if (!apiTrends) return [];
@@ -70,6 +71,11 @@ export default function TrendsPage() {
       arpa: t.arpa,
     }));
   }, [apiTrends]);
+
+  const stageTrendData: StageTrendPoint[] = useMemo(() => {
+    if (!apiStageTrends) return [];
+    return apiStageTrends;
+  }, [apiStageTrends]);
 
   const stages: StageMetrics[] = useMemo(() => {
     if (!apiMetrics) return [];
@@ -91,9 +97,10 @@ export default function TrendsPage() {
   }, [apiMetrics]);
 
   const stageColorClasses: Record<string, string> = {
-    MQL: "bg-violet-500",
-    SAL: "bg-blue-500",
-    SQL: "bg-cyan-500",
+    SAL: "bg-violet-500",
+    SQL: "bg-blue-500",
+    QUOTE_SENT: "bg-cyan-500",
+    NEGOTIATION: "bg-amber-500",
     WON: "bg-emerald-500",
     LOST: "bg-gray-500",
   };
@@ -138,7 +145,7 @@ export default function TrendsPage() {
                 <CardTitle>12-Week Pipeline Value Trend</CardTitle>
               </CardHeader>
               <CardContent>
-                <TrendChart data={trendData} />
+                <TrendChart data={stageTrendData} />
               </CardContent>
             </Card>
 

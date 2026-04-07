@@ -1,11 +1,11 @@
-import type { Deal, DashboardMetrics, StageMetrics, TrendPoint, DealMovement } from "@/types";
+import type { Deal, DashboardMetrics, StageMetrics, TrendPoint, StageTrendPoint, DealMovement } from "@/types";
 import type { StageCategory, HealthStatus } from "@/lib/constants";
 
 /** Generate mock dashboard metrics */
 export function getMockDashboardMetrics(): DashboardMetrics {
   const stages: StageMetrics[] = [
     {
-      stage: "MQL",
+      stage: "SAL",
       value: 850000,
       logos: 45,
       arpa: 18889,
@@ -20,7 +20,7 @@ export function getMockDashboardMetrics(): DashboardMetrics {
       dealsExited: 7,
     },
     {
-      stage: "SAL",
+      stage: "SQL",
       value: 620000,
       logos: 32,
       arpa: 19375,
@@ -35,19 +35,34 @@ export function getMockDashboardMetrics(): DashboardMetrics {
       dealsExited: 5,
     },
     {
-      stage: "SQL",
-      value: 502000,
-      logos: 26,
-      arpa: 19308,
-      prevValue: 517000,
-      prevLogos: 28,
-      prevArpa: 18464,
-      valueChange: -15000,
-      logosChange: -2,
-      arpaChange: 844,
-      valueChangePct: -2.9,
+      stage: "QUOTE_SENT",
+      value: 402000,
+      logos: 21,
+      arpa: 19143,
+      prevValue: 380000,
+      prevLogos: 20,
+      prevArpa: 19000,
+      valueChange: 22000,
+      logosChange: 1,
+      arpaChange: 143,
+      valueChangePct: 5.8,
       dealsEntered: 5,
-      dealsExited: 7,
+      dealsExited: 4,
+    },
+    {
+      stage: "NEGOTIATION",
+      value: 302000,
+      logos: 15,
+      arpa: 20133,
+      prevValue: 290000,
+      prevLogos: 14,
+      prevArpa: 20714,
+      valueChange: 12000,
+      logosChange: 1,
+      arpaChange: -581,
+      valueChangePct: 4.1,
+      dealsEntered: 4,
+      dealsExited: 3,
     },
     {
       stage: "WON",
@@ -81,10 +96,10 @@ export function getMockDashboardMetrics(): DashboardMetrics {
     },
   ];
 
-  const totalValue = stages.slice(0, 3).reduce((sum, s) => sum + s.value, 0);
-  const totalLogos = stages.slice(0, 3).reduce((sum, s) => sum + s.logos, 0);
-  const prevTotalValue = stages.slice(0, 3).reduce((sum, s) => sum + (s.prevValue || 0), 0);
-  const prevTotalLogos = stages.slice(0, 3).reduce((sum, s) => sum + (s.prevLogos || 0), 0);
+  const totalValue = stages.slice(0, 4).reduce((sum, s) => sum + s.value, 0);
+  const totalLogos = stages.slice(0, 4).reduce((sum, s) => sum + s.logos, 0);
+  const prevTotalValue = stages.slice(0, 4).reduce((sum, s) => sum + (s.prevValue || 0), 0);
+  const prevTotalLogos = stages.slice(0, 4).reduce((sum, s) => sum + (s.prevLogos || 0), 0);
 
   return {
     weekId: "2026-W03",
@@ -124,10 +139,33 @@ export function getMockTrendData(): TrendPoint[] {
   }).reverse();
 }
 
+/** Generate mock stage trend data */
+export function getMockStageTrendData(): StageTrendPoint[] {
+  return Array.from({ length: 12 }, (_, i) => {
+    const weekNum = i + 1;
+    const variance = () => 0.8 + Math.random() * 0.4;
+
+    const SAL = Math.round(150000 * variance());
+    const SQL = Math.round(400000 * variance());
+    const QUOTE_SENT = Math.round(200000 * variance());
+    const NEGOTIATION = Math.round(100000 * variance());
+
+    return {
+      weekId: `2026-W${String(weekNum).padStart(2, "0")}`,
+      week: `W${weekNum}`,
+      SAL,
+      SQL,
+      QUOTE_SENT,
+      NEGOTIATION,
+      total: SAL + SQL + QUOTE_SENT + NEGOTIATION,
+    };
+  });
+}
+
 /** Generate mock deals */
 export function getMockDeals(): Deal[] {
   const owners = ["Sarah Chen", "James Wilson", "Maria Garcia", "Alex Thompson", "Lisa Park"];
-  const stages: StageCategory[] = ["MQL", "SAL", "SQL"];
+  const stages: StageCategory[] = ["SAL", "SQL", "QUOTE_SENT", "NEGOTIATION"];
   const health: HealthStatus[] = ["HEALTHY", "ATTENTION", "CRITICAL"];
   const customers = [
     "Acme Corporation",
@@ -193,8 +231,8 @@ export function getMockMovements(): DealMovement[] {
       dealId: "deal-2",
       dealName: "TechCo - Growth Package",
       customerName: "TechCo Solutions",
-      fromStage: "MQL",
-      toStage: "SAL",
+      fromStage: "SAL",
+      toStage: "SQL",
       movementType: "FORWARD",
       value: 45000,
       ownerName: "James Wilson",
@@ -218,7 +256,7 @@ export function getMockMovements(): DealMovement[] {
       dealName: "StartupX - Starter Plan",
       customerName: "StartupX",
       fromStage: null,
-      toStage: "MQL",
+      toStage: "SAL",
       movementType: "NEW_DEAL",
       value: 24000,
       ownerName: "Alex Thompson",

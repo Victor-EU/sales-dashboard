@@ -4,11 +4,15 @@ import { logger } from "../logger.js";
 
 const { Pool } = pg;
 
+const isNeon = config.database.connectionString.includes(".neon.tech");
+const needsSsl = config.isProd || isNeon;
+
 export const pool = new Pool({
   connectionString: config.database.connectionString,
-  max: 20,
+  ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+  max: needsSsl ? 10 : 20, // Neon has lower connection limits
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
 });
 
 pool.on("connect", () => {

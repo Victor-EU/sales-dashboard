@@ -235,7 +235,7 @@ class HubSpotService {
 
   /** Get stage category from stage ID */
   getStageCategory(stageId: string): StageCategory {
-    return STAGE_CATEGORY_MAP[stageId] || "MQL";
+    return STAGE_CATEGORY_MAP[stageId] || "SAL";
   }
 
   /** Get stage name from stage ID */
@@ -255,7 +255,7 @@ class HubSpotService {
     if (result.rows.length > 0) {
       return {
         name: result.rows[0].label,
-        category: (result.rows[0].category as StageCategory) || "MQL",
+        category: (result.rows[0].category as StageCategory) || "SAL",
       };
     }
 

@@ -71,6 +71,16 @@ export interface ApiTrendPoint {
   arpa: number;
 }
 
+export interface ApiStageTrendPoint {
+  weekId: string;
+  week: string;
+  SAL: number;
+  SQL: number;
+  QUOTE_SENT: number;
+  NEGOTIATION: number;
+  total: number;
+}
+
 export interface ApiMovement {
   id: string;
   dealId: string;
@@ -194,6 +204,11 @@ export const api = {
   /** Get trend data */
   async getTrends(weeks = 12): Promise<{ trends: ApiTrendPoint[] }> {
     return fetchApi(`/api/trends?weeks=${weeks}`);
+  },
+
+  /** Get trend data broken down by stage */
+  async getTrendsByStage(weeks = 12): Promise<{ trends: ApiStageTrendPoint[] }> {
+    return fetchApi(`/api/trends/by-stage?weeks=${weeks}`);
   },
 
   /** Get movements for a week */

@@ -80,9 +80,10 @@ export function DealsTable({ deals }: DealsTableProps) {
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                row.original.stage === "MQL" && "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400",
-                row.original.stage === "SAL" && "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400",
-                row.original.stage === "SQL" && "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400"
+                row.original.stage === "SAL" && "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400",
+                row.original.stage === "SQL" && "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400",
+                row.original.stage === "QUOTE_SENT" && "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400",
+                row.original.stage === "NEGOTIATION" && "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
               )}
             >
               {config?.label}

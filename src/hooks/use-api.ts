@@ -19,6 +19,7 @@ export const queryKeys = {
   metrics: (weekId: string) => ["metrics", weekId] as const,
   deals: (weekId?: string) => ["deals", weekId] as const,
   trends: (weeks: number) => ["trends", weeks] as const,
+  trendsByStage: (weeks: number) => ["trendsByStage", weeks] as const,
   movements: (weekId?: string) => ["movements", weekId] as const,
   health: ["health"] as const,
   scopedMetrics: (weekId: string, period: string) =>
@@ -76,6 +77,18 @@ export function useTrends(weeks = 12) {
     queryKey: queryKeys.trends(weeks),
     queryFn: async () => {
       const { trends } = await api.getTrends(weeks);
+      return trends;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Hook to get trends broken down by stage */
+export function useTrendsByStage(weeks = 12) {
+  return useQuery({
+    queryKey: queryKeys.trendsByStage(weeks),
+    queryFn: async () => {
+      const { trends } = await api.getTrendsByStage(weeks);
       return trends;
     },
     staleTime: 5 * 60 * 1000,

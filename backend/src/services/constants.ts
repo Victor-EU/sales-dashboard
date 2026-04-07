@@ -5,11 +5,11 @@ export const STAGE_CATEGORY_MAP: Record<string, StageCategory> = {
   // ============================================
   // New Business Pipeline (default) - Main Sales Funnel
   // ============================================
-  appointmentscheduled: "MQL",      // Deals Created
+  appointmentscheduled: "SAL",      // Deals Created
   qualifiedtobuy: "SAL",            // SAL
   "2101268719": "SQL",              // SQL
-  decisionmakerboughtin: "SQL",     // Quote Sent
-  contractsent: "SQL",              // Negotiation / Commitment
+  decisionmakerboughtin: "QUOTE_SENT",  // Quote Sent
+  contractsent: "NEGOTIATION",      // Negotiation / Commitment
   closedwon: "WON",                 // Closed Won
   closedlost: "LOST",               // Closed Lost
   "156501691": "LOST",              // Rejected - No Opportunity
@@ -17,14 +17,14 @@ export const STAGE_CATEGORY_MAP: Record<string, StageCategory> = {
   // ============================================
   // Renewal Pipeline (27850444)
   // ============================================
-  "85640927": "MQL",                // Renewal Created
-  "244610530": "MQL",               // In Communication
-  "418418645": "SAL",               // Quote Sent
+  "85640927": "SAL",                // Renewal Created
+  "244610530": "SAL",               // In Communication
+  "418418645": "QUOTE_SENT",        // Quote Sent
   "85640929": "SAL",                // At Risk
   "4097209550": "SAL",              // Auto renewal (in progress)
-  "85640930": "SQL",                // Negotiation
-  "1309001921": "SQL",              // PO on hold
-  "1634227405": "SQL",              // Verbal Agreement
+  "85640930": "NEGOTIATION",        // Negotiation
+  "1309001921": "NEGOTIATION",      // PO on hold
+  "1634227405": "NEGOTIATION",      // Verbal Agreement
   "85640931": "WON",                // Won (Contract renewed)
   "85640933": "LOST",               // Lost (Contract lost)
   "3817869502": "LOST",             // Invoice Cancelled
@@ -33,31 +33,31 @@ export const STAGE_CATEGORY_MAP: Record<string, StageCategory> = {
   // ============================================
   // Expansion Pipeline (38293447)
   // ============================================
-  "1281613041": "MQL",              // Deal Created
-  "108679918": "MQL",               // Customer Contacted
-  "108679919": "SAL",               // Expansion Meeting
-  "108679920": "SAL",               // Quote sent
-  "108679921": "SQL",               // Negotiation
+  "1281613041": "SAL",              // Deal Created
+  "108679918": "SAL",               // Customer Contacted
+  "108679919": "SQL",               // Expansion Meeting
+  "108679920": "QUOTE_SENT",        // Quote sent
+  "108679921": "NEGOTIATION",       // Negotiation
   "108679922": "WON",               // Customer Won (Expanded)
   "108679924": "LOST",              // Closed lost
 
   // ============================================
   // Partnership Deals Pipeline (1280996578)
   // ============================================
-  "1750222043": "MQL",              // Deal registration
+  "1750222043": "SAL",              // Deal registration
   "1750222044": "SQL",              // SQL
   "1750222045": "LOST",             // Rejected
-  "1750222046": "SQL",              // Quote Sent
+  "1750222046": "QUOTE_SENT",       // Quote Sent
   "1750222048": "WON",              // Closed Won
   "1750222049": "LOST",             // Closed Lost
 
   // ============================================
   // Partnership Acquisition Funnel (2568451319)
   // ============================================
-  "3527480509": "MQL",              // Demo Scheduled
-  "3527480510": "SAL",              // Demo Completed
-  "3527480512": "SAL",              // Product Testing / Trial
-  "3527480513": "SQL",              // Negotiation
+  "3527480509": "SAL",              // Demo Scheduled
+  "3527480510": "SQL",              // Demo Completed
+  "3527480512": "SQL",              // Product Testing / Trial
+  "3527480513": "NEGOTIATION",      // Negotiation
   "3527480514": "WON",              // Contract Signed
   "3527471313": "WON",              // Active Partner
   "3527480515": "LOST",             // Lost
@@ -65,14 +65,14 @@ export const STAGE_CATEGORY_MAP: Record<string, StageCategory> = {
   // ============================================
   // Invoices - Multi Year deals (1587132605)
   // ============================================
-  "2189386983": "MQL",              // Invoice to create
-  "2189386988": "SAL",              // Invoice sent
+  "2189386983": "SAL",              // Invoice to create
+  "2189386988": "QUOTE_SENT",       // Invoice sent
   "3056367814": "WON",              // Invoice paid
 
   // ============================================
   // Self-serve Pipeline (712118459)
   // ============================================
-  "1034181874": "MQL",              // Deal Created
+  "1034181874": "SAL",              // Deal Created
   "1034181879": "WON",              // Closed Won
   "1034181880": "LOST",             // Closed Lost
   "1634227403": "LOST",             // Rejected - No Opportunity
@@ -125,49 +125,55 @@ export const CATEGORY_CONFIG: Record<
   StageCategory,
   { label: string; order: number }
 > = {
-  MQL: { label: "MQL (Deals Created)", order: 1 },
-  SAL: { label: "SAL", order: 2 },
-  SQL: { label: "SQL", order: 3 },
-  WON: { label: "Closed Won", order: 4 },
-  LOST: { label: "Closed Lost", order: 5 },
+  MQL: { label: "MQL", order: 0 },
+  SAL: { label: "SAL", order: 1 },
+  SQL: { label: "SQL", order: 2 },
+  QUOTE_SENT: { label: "Quote Sent", order: 3 },
+  NEGOTIATION: { label: "Negotiation", order: 4 },
+  WON: { label: "Closed Won", order: 5 },
+  LOST: { label: "Closed Lost", order: 6 },
 };
 
 /** Funnel stages in order (excludes WON/LOST for active pipeline) */
-export const FUNNEL_STAGES: StageCategory[] = ["MQL", "SAL", "SQL"];
+export const FUNNEL_STAGES: StageCategory[] = ["SAL", "SQL", "QUOTE_SENT", "NEGOTIATION"];
 
 /** All stage categories in order */
-export const ALL_STAGES: StageCategory[] = ["MQL", "SAL", "SQL", "WON", "LOST"];
+export const ALL_STAGES: StageCategory[] = ["SAL", "SQL", "QUOTE_SENT", "NEGOTIATION", "WON", "LOST"];
 
 /** Stage progression order for movement detection */
 export const STAGE_ORDER: Record<StageCategory, number> = {
-  MQL: 1,
-  SAL: 2,
-  SQL: 3,
-  WON: 4,
-  LOST: 5,
+  MQL: 0,
+  SAL: 1,
+  SQL: 2,
+  QUOTE_SENT: 3,
+  NEGOTIATION: 4,
+  WON: 5,
+  LOST: 6,
 };
 
-/** Health thresholds */
+/** Health thresholds (adjusted for longer B2B sales cycles) */
 export const HEALTH_THRESHOLDS = {
   /** Days without activity before ATTENTION */
-  attentionDaysNoActivity: 7,
+  attentionDaysNoActivity: 14,
   /** Days without activity before CRITICAL */
-  criticalDaysNoActivity: 14,
+  criticalDaysNoActivity: 28,
   /** Days past close date before ATTENTION */
   attentionDaysPastDue: 0,
   /** Days past close date before CRITICAL */
-  criticalDaysPastDue: 7,
+  criticalDaysPastDue: 14,
   /** Days in stage before ATTENTION (per stage) */
   attentionDaysInStage: {
-    MQL: 14,
-    SAL: 21,
-    SQL: 30,
+    SAL: 28,
+    SQL: 42,
+    QUOTE_SENT: 28,
+    NEGOTIATION: 42,
   } as Record<string, number>,
   /** Days in stage before CRITICAL (per stage) */
   criticalDaysInStage: {
-    MQL: 30,
-    SAL: 45,
-    SQL: 60,
+    SAL: 60,
+    SQL: 90,
+    QUOTE_SENT: 60,
+    NEGOTIATION: 90,
   } as Record<string, number>,
 };
 
@@ -209,9 +215,12 @@ export const ACTIVE_PIPELINES = [
 ];
 
 /**
- * Sales pipelines for scoped metrics (New Business + Partnership Deals)
+ * Sales pipeline IDs for scoped metrics (New Business + Partnership Deals)
  * These are the pipelines that represent "new sales" pipeline value
- * - New Business: Direct sales pipeline
- * - Partnership Deals: Deals coming through partner channel
+ * - default: New Business (Direct sales pipeline)
+ * - 1280996578: Partnership Deals (Deals coming through partner channel)
  */
+export const SALES_PIPELINE_IDS = ["default", "1280996578"];
+
+/** Sales pipeline names (for display purposes) */
 export const SALES_PIPELINES = ["New Business", "Partnership Deals"];

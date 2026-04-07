@@ -1,15 +1,15 @@
 /** Stage category types */
-export type StageCategory = "MQL" | "SAL" | "SQL" | "WON" | "LOST";
+export type StageCategory = "SAL" | "SQL" | "QUOTE_SENT" | "NEGOTIATION" | "WON" | "LOST";
 export type HealthStatus = "CRITICAL" | "ATTENTION" | "HEALTHY";
 
 /** HubSpot stage ID to dashboard category mapping */
 export const STAGE_CATEGORY_MAP: Record<string, StageCategory> = {
   // New Business Pipeline
-  appointmentscheduled: "MQL",
+  appointmentscheduled: "SAL",
   qualifiedtobuy: "SAL",
   "2101268719": "SQL",
-  decisionmakerboughtin: "SQL",
-  contractsent: "SQL",
+  decisionmakerboughtin: "QUOTE_SENT",
+  contractsent: "NEGOTIATION",
   closedwon: "WON",
   closedlost: "LOST",
   "156501691": "LOST",
@@ -29,11 +29,6 @@ export const STAGE_ORDER: Record<string, number> = {
 
 /** Stage display configuration */
 export const STAGE_CONFIG: Record<StageCategory, { label: string; color: string; bgColor: string }> = {
-  MQL: {
-    label: "MQL",
-    color: "hsl(var(--stage-mql))",
-    bgColor: "hsl(var(--stage-mql) / 0.1)",
-  },
   SAL: {
     label: "SAL",
     color: "hsl(var(--stage-sal))",
@@ -43,6 +38,16 @@ export const STAGE_CONFIG: Record<StageCategory, { label: string; color: string;
     label: "SQL",
     color: "hsl(var(--stage-sql))",
     bgColor: "hsl(var(--stage-sql) / 0.1)",
+  },
+  QUOTE_SENT: {
+    label: "Quote Sent",
+    color: "hsl(var(--stage-quote-sent))",
+    bgColor: "hsl(var(--stage-quote-sent) / 0.1)",
+  },
+  NEGOTIATION: {
+    label: "Negotiation",
+    color: "hsl(var(--stage-negotiation))",
+    bgColor: "hsl(var(--stage-negotiation) / 0.1)",
   },
   WON: {
     label: "Won",
@@ -76,7 +81,7 @@ export const HEALTH_CONFIG: Record<HealthStatus, { label: string; icon: string; 
 };
 
 /** Funnel stages in order */
-export const FUNNEL_STAGES: StageCategory[] = ["MQL", "SAL", "SQL", "WON", "LOST"];
+export const FUNNEL_STAGES: StageCategory[] = ["SAL", "SQL", "QUOTE_SENT", "NEGOTIATION", "WON", "LOST"];
 
 /** Navigation items */
 export const NAV_ITEMS = [

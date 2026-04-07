@@ -6,10 +6,10 @@ import { FunnelChart } from "@/components/charts/funnel-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { WeeklyComparisonTable } from "./weekly-comparison-table";
 import { MovementsList } from "./movements-list";
-import { useMetrics, useTrends, useMovements } from "@/hooks/use-api";
+import { useMetrics, useTrendsByStage, useMovements } from "@/hooks/use-api";
 import { useWeek } from "@/contexts/week-context";
-import { getMockDashboardMetrics, getMockTrendData, getMockMovements } from "@/lib/mock-data";
-import type { StageMetrics, TrendPoint, DealMovement } from "@/types";
+import { getMockDashboardMetrics, getMockStageTrendData, getMockMovements } from "@/lib/mock-data";
+import type { StageMetrics, StageTrendPoint, DealMovement } from "@/types";
 import type { StageCategory } from "@/lib/constants";
 
 export function DashboardContent() {
@@ -18,12 +18,12 @@ export function DashboardContent() {
 
   // Use snapshot metrics - pipeline = all open deals at snapshot time
   const { data: apiMetrics, isLoading: metricsLoading, error: metricsError } = useMetrics(weekId);
-  const { data: apiTrends, isLoading: trendsLoading, error: trendsError } = useTrends(12);
+  const { data: apiTrends, isLoading: trendsLoading, error: trendsError } = useTrendsByStage(12);
   const { data: apiMovements, isLoading: movementsLoading, error: movementsError } = useMovements(weekId);
 
   // Use mock data as fallback when API is not available
   const mockMetrics = getMockDashboardMetrics();
-  const mockTrendData = getMockTrendData();
+  const mockStageTrendData = getMockStageTrendData();
   const mockMovements = getMockMovements();
 
   // Transform API data to match component types
@@ -37,7 +37,7 @@ export function DashboardContent() {
       }
     : mockMetrics;
 
-  const trendData: TrendPoint[] = apiTrends || mockTrendData;
+  const trendData: StageTrendPoint[] = apiTrends || mockStageTrendData;
 
   const movements: DealMovement[] = apiMovements
     ? [
@@ -59,7 +59,7 @@ export function DashboardContent() {
       }))
     : mockMovements;
 
-  const sparklineData = trendData.map((d) => d.value);
+  const sparklineData = trendData.map((d) => d.total);
   const isLoading = metricsLoading || trendsLoading || movementsLoading;
   const hasApiError = metricsError || trendsError || movementsError;
 
@@ -79,7 +79,7 @@ export function DashboardContent() {
           previousValue={metrics.prevTotalValue}
           format="currency"
           sparklineData={sparklineData}
-          tooltip="Sum of ARR for all open deals (MQL, SAL, SQL) at snapshot time"
+          tooltip="Sum of ARR for all open deals (SAL, SQL, Quote Sent, Negotiation) at snapshot time"
           loading={isLoading && !hasApiError}
         />
         <MetricCard
@@ -112,7 +112,7 @@ export function DashboardContent() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Sales Funnel</CardTitle>
+            <CardTitle>Pipeline</CardTitle>
           </CardHeader>
           <CardContent>
             <FunnelChart stages={metrics.stages} />

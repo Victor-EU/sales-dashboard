@@ -32,9 +32,10 @@
   --info-foreground: 0 0% 100%;
 
   /* Stage Colors */
-  --stage-mql: 262 83% 58%;
-  --stage-sal: 217 91% 60%;
-  --stage-sql: 189 94% 43%;
+  --stage-sal: 262 83% 58%;
+  --stage-sql: 217 91% 60%;
+  --stage-quote-sent: 189 94% 43%;
+  --stage-negotiation: 38 92% 50%;
   --stage-won: 160 84% 39%;
   --stage-lost: 220 9% 46%;
 

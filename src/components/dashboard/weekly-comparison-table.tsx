@@ -46,9 +46,10 @@ export function WeeklyComparisonTable({ stages }: WeeklyComparisonTableProps) {
                     <span
                       className={cn(
                         "h-2 w-2 rounded-full",
-                        stageName === "MQL" && "bg-violet-500",
-                        stageName === "SAL" && "bg-blue-500",
-                        stageName === "SQL" && "bg-cyan-500",
+                        stageName === "SAL" && "bg-violet-500",
+                        stageName === "SQL" && "bg-blue-500",
+                        stageName === "QUOTE_SENT" && "bg-cyan-500",
+                        stageName === "NEGOTIATION" && "bg-amber-500",
                         stageName === "WON" && "bg-emerald-500",
                         stageName === "LOST" && "bg-gray-500"
                       )}
